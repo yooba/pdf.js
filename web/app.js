@@ -1584,6 +1584,15 @@ function loadAndEnablePDFBug(enabledTabs) {
 }
 
 function webViewerInitialized() {
+  if (!PDFViewerApplication.isViewerEmbedded) {
+    PDFViewerApplication.l10n.get('viewer_not_embedded', null,
+        'The viewer must be embedded').then((msg) => {
+      PDFViewerApplication.error(msg);
+    });
+
+    return;
+  }
+
   let appConfig = PDFViewerApplication.appConfig;
   let file;
   if (typeof PDFJSDev === 'undefined' || PDFJSDev.test('GENERIC')) {
