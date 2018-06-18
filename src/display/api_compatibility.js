@@ -35,16 +35,6 @@ if (typeof PDFJSDev === 'undefined' || PDFJSDev.test('GENERIC')) {
     }
   })();
 
-  // Support: Safari 6.0+, iOS
-  (function checkRangeRequests() {
-    // Safari has issues with cached range requests, see issue #3260.
-    // Last tested with version 6.0.4.
-    if (isSafari || isIOS) {
-      compatibilityParams.disableRange = true;
-      compatibilityParams.disableStream = true;
-    }
-  })();
-
   // Support: Node.js
   (function checkFontFaceAndImage() {
     // Node.js is missing native support for `@font-face` and `Image`.
