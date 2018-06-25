@@ -20,10 +20,7 @@ if (typeof PDFJSDev === 'undefined' || PDFJSDev.test('GENERIC')) {
   const userAgent =
     (typeof navigator !== 'undefined' && navigator.userAgent) || '';
   const isIE = /Trident/.test(userAgent);
-  const isIOS = /\b(iPad|iPhone|iPod)(?=;)/.test(userAgent);
   const isIOSChrome = /CriOS/.test(userAgent);
-  const isSafari = /Safari\//.test(userAgent) &&
-                   !/(Chrome\/|Android\s)/.test(userAgent);
 
   // Checks if possible to use URL.createObjectURL()
   // Support: IE, Chrome on iOS

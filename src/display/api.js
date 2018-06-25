@@ -18,7 +18,7 @@ import {
   assert, createPromiseCapability, getVerbosityLevel, info, InvalidPDFException,
   isArrayBuffer, isSameOrigin, MissingPDFException, NativeImageDecoding,
   PasswordException, setVerbosityLevel, shadow, stringToBytes,
-  UnexpectedResponseException, UnknownErrorException, unreachable, Util, warn
+  UnexpectedResponseException, UnknownErrorException, unreachable, warn
 } from '../shared/util';
 import {
   DOMCanvasFactory, DOMCMapReaderFactory, DummyStatTimer, loadScript,
@@ -286,10 +286,10 @@ function getDocument(src) {
   }
 
   if (typeof params.disableRange !== 'boolean') {
-    params.disableRange = apiCompatibilityParams.disableRange || false;
+    params.disableRange = false;
   }
   if (typeof params.disableStream !== 'boolean') {
-    params.disableStream = apiCompatibilityParams.disableStream || false;
+    params.disableStream = false;
   }
   if (typeof params.disableAutoFetch !== 'boolean') {
     params.disableAutoFetch = false;
@@ -726,6 +726,11 @@ var PDFDocumentProxy = (function PDFDocumentProxyClosure() {
       return this.loadingTask.destroy();
     },
 
+    /**
+     * @return {Object} A subset of the current {DocumentInitParameters},
+     *   which are either needed in the viewer and/or whose default values
+     *   may be affected by the `apiCompatibilityParams`.
+     */
     get loadingParams() {
       return this.transport.loadingParams;
     },
@@ -1074,7 +1079,7 @@ var PDFPageProxy = (function PDFPageProxyClosure() {
               resolve(textContent);
               return;
             }
-            Util.extendObj(textContent.styles, value.styles);
+            Object.assign(textContent.styles, value.styles);
             textContent.items.push(...value.items);
             pump();
           }, reject);
@@ -2170,8 +2175,6 @@ var WorkerTransport = (function WorkerTransportClosure() {
     get loadingParams() {
       let params = this._params;
       return shadow(this, 'loadingParams', {
-        disableRange: params.disableRange,
-        disableStream: params.disableStream,
         disableAutoFetch: params.disableAutoFetch,
         disableCreateObjectURL: params.disableCreateObjectURL,
         disableFontFace: params.disableFontFace,
