@@ -470,19 +470,6 @@ html[dir='ltr'] .doorHangerRight:before {
   transform: translateX(-50%);
 }
 
-#toolbarViewerRight {
-  margin-right: 32px;
-}
-
-#toolbarViewerRight > button#presentationMode,
-#openFile,
-#print,
-#download,
-#secondaryToolbarToggle,
-a#viewBookmark {
-  display: none;
-}
-
 html[dir='ltr'] #toolbarViewerLeft,
 html[dir='rtl'] #toolbarViewerRight {
   float: left;
@@ -1916,4 +1903,15 @@ html[dir='rtl'] #documentPropertiesOverlay .row > * {
   #scaleSelectContainer {
     display: none;
   }
+}
+
+#toolbarViewerRight {
+  min-width: 32px;
+}
+
+#outerContainer .hiddenLargeView,
+#outerContainer .hiddenMediumView,
+#outerContainer .hiddenSmallView,
+#outerContainer #secondaryToolbarToggle {
+  display: none;
 }
