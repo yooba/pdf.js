@@ -1906,7 +1906,7 @@ html[dir='rtl'] #documentPropertiesOverlay .row > * {
 }
 
 #toolbarViewerRight {
-  min-width: 32px;
+  min-width: 38px;
 }
 
 #outerContainer .hiddenLargeView,
