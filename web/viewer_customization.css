@@ -1,0 +1,12 @@
+#toolbarViewerRight {
+  margin-right: 20px;
+}
+
+#toolbarViewerRight > button#presentationMode,
+#openFile,
+#print,
+#download,
+#secondaryToolbarToggle,
+a#viewBookmark {
+  display: none;
+}
