@@ -470,6 +470,19 @@ html[dir='ltr'] .doorHangerRight:before {
   transform: translateX(-50%);
 }
 
+#toolbarViewerRight {
+  margin-right: 32px;
+}
+
+#toolbarViewerRight > button#presentationMode,
+#openFile,
+#print,
+#download,
+#secondaryToolbarToggle,
+a#viewBookmark {
+  display: none;
+}
+
 html[dir='ltr'] #toolbarViewerLeft,
 html[dir='rtl'] #toolbarViewerRight {
   float: left;
