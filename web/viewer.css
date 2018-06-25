@@ -471,6 +471,15 @@ html[dir='ltr'] .doorHangerRight:before {
 }
 
 #toolbarViewerRight {
+  margin-right: 32px;
+}
+
+#toolbarViewerRight > button#presentationMode,
+#openFile,
+#print,
+#download,
+#secondaryToolbarToggle,
+a#viewBookmark {
   display: none;
 }
 
