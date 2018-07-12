@@ -1912,13 +1912,14 @@ html[dir='rtl'] #documentPropertiesOverlay .row > * {
   min-width: 38px;
 }
 
-#outerContainer .hiddenLargeView,
-#outerContainer .hiddenMediumView,
-#outerContainer .hiddenSmallView,
-#outerContainer #secondaryToolbarToggle {
+#presentationMode,
+#openFile,
+#print,
+#download,
+#viewBookmark,
+#secondaryToolbarToggle {
   display: none;
 }
-
 body {
   background-color: #fff;
 }
