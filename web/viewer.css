@@ -1905,6 +1905,9 @@ html[dir='rtl'] #documentPropertiesOverlay .row > * {
   }
 }
 
+/**
+ * Customization
+ */
 #toolbarViewerRight {
   min-width: 38px;
 }
@@ -1914,4 +1917,145 @@ html[dir='rtl'] #documentPropertiesOverlay .row > * {
 #outerContainer .hiddenSmallView,
 #outerContainer #secondaryToolbarToggle {
   display: none;
+}
+
+body {
+  background-color: #fff;
+}
+#viewer {
+  background-color: #fff;
+}
+.verticalToolbarSeparator {
+  display: none;
+}
+.splitToolbarButtonSeparator {
+  background-color: transparent;
+  box-shadow: none;
+}
+#toolbarContainer, .findbar, .secondaryToolbar {
+  background-color: #fff;
+  background-image: none;
+}
+html[dir='ltr'] #toolbarContainer, .findbar, .secondaryToolbar {
+  box-shadow: inset 0 1px 1px hsla(0,0%,0%,.15),
+              inset 0 -1px 0 hsla(0,0%,100%,.05),
+              0 1px 0 hsla(0,0%,0%,.15),
+              0 2px 1px hsla(0,0%,0%,.2);
+}
+html[dir='rtl'] #toolbarContainer, .findbar, .secondaryToolbar {
+  box-shadow: inset 0 1px 1px hsla(0,0%,0%,.15),
+              inset 0 -1px 0 hsla(0,0%,100%,.05),
+              0 1px 0 hsla(0,0%,0%,.15),
+              0 2px 1px hsla(0,0%,0%,.2);
+}
+.dropdownToolbarButton {
+  background-color: hsla(0,0%,70%,.1);
+  border-radius: 10px;
+  border: 0px;
+  box-shadow: 0px 2px 5px #d3d3d3;
+}
+.dropdownToolbarButton > select {
+  color: black;
+}
+.dropdownToolbarButton > select > option {
+  background-color: hsla(0,0%,70%,.1);
+}
+.splitToolbarButton > .toolbarButton:hover,
+.splitToolbarButton > .toolbarButton:focus,
+.dropdownToolbarButton:hover,
+.dropdownToolbarButton:hover:active,
+.overlayButton:hover,
+.overlayButton:focus,
+.toolbarButton.textButton:hover,
+.toolbarButton.textButton:focus {
+  background-color: hsla(0,0%,20%,.1);
+  box-shadow: 0px 2px 5px #d3d3d3;
+}
+.pdfViewer .page {
+    border-image: none;
+}
+.pdfViewer .canvasWrapper {
+  box-shadow: 0px 15px 30px 0px #d3d3d3;
+    border-image: none;
+}
+.toolbarLabel {
+  color: black;
+}
+.toolbarField {
+  color: black;
+  background-color: hsla(0,0%,70%,.1);
+  border-radius: 10px;
+  border: 0px;
+  box-shadow: 0px 2px 5px #d3d3d3;
+  padding-top: 4px;
+}
+.toolbarField.pageNumber {
+  text-align: center;
+}
+.toolbarButton.toggled,
+.secondaryToolbarButton.toggled {
+  background-color: hsla(0,0%,0%,.1);
+}
+#loadingBar {
+  background-color: darkgrey;
+  border-bottom: 0px;
+}
+#toolbarSidebar, #sidebarContent {
+  background-color: hsla(0, 0%, 100%, 0.7);
+  background-image: none;
+}
+html[dir='ltr'] #toolbarSidebar {
+  box-shadow: inset -1px 0 0 rgba(0, 0, 0, .05),
+              inset 0 -1px 0 hsla(0,0%,100%,.05),
+              0 1px 0 hsla(0,0%,0%,.15),
+              0 0 1px hsla(0,0%,0%,.1);
+}
+html[dir='rtl'] #toolbarSidebar {
+  box-shadow: inset 1px 0 0 rgba(0, 0, 0, .05),
+              inset 0 1px 0 hsla(0,0%,100%,.05),
+              0 1px 0 hsla(0,0%,0%,.15),
+              0 0 1px hsla(0,0%,0%,.1);
+}
+#sidebarContainer {
+  border-top: 0px;
+}
+html[dir='ltr'] #sidebarContent {
+  left: 0;
+  box-shadow: inset -1px 0 0 hsla(0,0%,0%,.05);
+}
+html[dir='rtl'] #sidebarContent {
+  right: 0;
+  box-shadow: inset 1px 0 0 hsla(0,0%,0%,.05);
+}
+.splitToolbarButton.toggled > .toolbarButton,
+.splitToolbarButton.toggled > .toolbarButton.toggled {
+  background-color: transparent;
+  background-image: none;
+  border: 0px;
+  box-shadow: none;
+}
+.toolbarButton[disabled],
+.secondaryToolbarButton[disabled],
+.overlayButton[disabled] {
+  opacity: 1;
+}
+.thumbnailSelectionRing {
+  box-shadow: none;
+}
+.thumbnailImage {
+  border: none;
+  box-shadow: 0px 3px 15px 0px rgba(0, 0, 0, 0.4);
+}
+a:focus > .thumbnail > .thumbnailSelectionRing,
+.thumbnail:hover > .thumbnailSelectionRing {
+  box-shadow: none;
+}
+.thumbnail.selected > .thumbnailSelectionRing > .thumbnailImage {
+  box-shadow: 0px 3px 15px 0px rgba(0, 0, 0, 0.4);
+  border: 2px solid #0092fc;
+  border-radius: 4px;
+}
+
+.thumbnail.selected > .thumbnailSelectionRing {
+  box-shadow: none;
 }
