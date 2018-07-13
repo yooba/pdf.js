@@ -1920,6 +1920,12 @@ html[dir='rtl'] #documentPropertiesOverlay .row > * {
 #secondaryToolbarToggle {
   display: none;
 }
+#viewThumbnail,
+#viewOutline,
+#viewAttachments {
+  position: relative;
+  margin-top: 4px;
+}
 body {
   background-color: #fff;
 }
@@ -1928,10 +1934,6 @@ body {
 }
 .verticalToolbarSeparator {
   display: none;
-}
-.splitToolbarButtonSeparator {
-  background-color: transparent;
-  box-shadow: none;
 }
 #toolbarContainer, .findbar, .secondaryToolbar {
   background-color: #fff;
@@ -1961,14 +1963,9 @@ html[dir='rtl'] #toolbarContainer, .findbar, .secondaryToolbar {
 .dropdownToolbarButton > select > option {
   background-color: hsla(0,0%,70%,.1);
 }
-.splitToolbarButton > .toolbarButton:hover,
-.splitToolbarButton > .toolbarButton:focus,
+
 .dropdownToolbarButton:hover,
-.dropdownToolbarButton:hover:active,
-.overlayButton:hover,
-.overlayButton:focus,
-.toolbarButton.textButton:hover,
-.toolbarButton.textButton:focus {
+.dropdownToolbarButton:hover:active {
   background-color: hsla(0,0%,20%,.1);
   box-shadow: 0px 2px 5px #d3d3d3;
 }
@@ -1977,7 +1974,7 @@ html[dir='rtl'] #toolbarContainer, .findbar, .secondaryToolbar {
 }
 .pdfViewer .canvasWrapper {
   box-shadow: 0px 15px 30px 0px #d3d3d3;
-    border-image: none;
+  border-image: none;
 }
 .toolbarLabel {
   color: black;
@@ -1993,9 +1990,20 @@ html[dir='rtl'] #toolbarContainer, .findbar, .secondaryToolbar {
 .toolbarField.pageNumber {
   text-align: center;
 }
+.toolbarButton {
+  border: none;
+}
+.toolbarButton:hover,
+.toolbarButton:hover:active,
+.toolbarButton:focus,
+.toolbarButton.toggled:hover:active {
+  background-color: hsla(0,0%,0%,.05);
+  border: none;
+}
 .toolbarButton.toggled,
 .secondaryToolbarButton.toggled {
-  background-color: hsla(0,0%,0%,.1);
+  background-color: hsla(0,0%,0%,.05);
+  box-shadow: none;
 }
 #loadingBar {
   background-color: darkgrey;
@@ -2027,13 +2035,6 @@ html[dir='ltr'] #sidebarContent {
 html[dir='rtl'] #sidebarContent {
   right: 0;
   box-shadow: inset 1px 0 0 hsla(0,0%,0%,.05);
-}
-.splitToolbarButton.toggled > .toolbarButton,
-.splitToolbarButton.toggled > .toolbarButton.toggled {
-  background-color: transparent;
-  background-image: none;
-  border: 0px;
-  box-shadow: none;
 }
 .toolbarButton[disabled],
 .secondaryToolbarButton[disabled],
