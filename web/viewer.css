@@ -1918,7 +1918,7 @@ html[dir='rtl'] #documentPropertiesOverlay .row > * {
 #download,
 #viewBookmark,
 #secondaryToolbarToggle {
-  display: none;
+  visibility: hidden;
 }
 #viewThumbnail,
 #viewOutline,
