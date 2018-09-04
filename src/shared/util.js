@@ -15,6 +15,7 @@
 
 import './compatibility';
 import { ReadableStream } from './streams_polyfill';
+import { URL } from './url_polyfill';
 
 var FONT_IDENTITY_MATRIX = [0.001, 0, 0, 0.001, 0, 0];
 
@@ -22,6 +23,18 @@ const NativeImageDecoding = {
   NONE: 'none',
   DECODE: 'decode',
   DISPLAY: 'display',
+};
+
+// Permission flags from Table 22, Section 7.6.3.2 of the PDF specification.
+const PermissionFlag = {
+  PRINT: 0x04,
+  MODIFY_CONTENTS: 0x08,
+  COPY: 0x10,
+  MODIFY_ANNOTATIONS: 0x20,
+  FILL_INTERACTIVE_FORMS: 0x100,
+  COPY_FOR_ACCESSIBILITY: 0x200,
+  ASSEMBLE: 0x400,
+  PRINT_HIGH_QUALITY: 0x800,
 };
 
 var TextRenderingMode = {
@@ -443,18 +456,6 @@ var UnexpectedResponseException =
   return UnexpectedResponseException;
 })();
 
-var NotImplementedException = (function NotImplementedExceptionClosure() {
-  function NotImplementedException(msg) {
-    this.message = msg;
-  }
-
-  NotImplementedException.prototype = new Error();
-  NotImplementedException.prototype.name = 'NotImplementedException';
-  NotImplementedException.constructor = NotImplementedException;
-
-  return NotImplementedException;
-})();
-
 var MissingDataException = (function MissingDataExceptionClosure() {
   function MissingDataException(begin, end) {
     this.begin = begin;
@@ -850,52 +851,45 @@ var Util = (function UtilClosure() {
     return result;
   };
 
-  var ROMAN_NUMBER_MAP = [
-    '', 'C', 'CC', 'CCC', 'CD', 'D', 'DC', 'DCC', 'DCCC', 'CM',
-    '', 'X', 'XX', 'XXX', 'XL', 'L', 'LX', 'LXX', 'LXXX', 'XC',
-    '', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX'
-  ];
-  /**
-   * Converts positive integers to (upper case) Roman numerals.
-   * @param {integer} number - The number that should be converted.
-   * @param {boolean} lowerCase - Indicates if the result should be converted
-   *   to lower case letters. The default is false.
-   * @return {string} The resulting Roman number.
-   */
-  Util.toRoman = function Util_toRoman(number, lowerCase) {
-    assert(Number.isInteger(number) && number > 0,
-           'The number should be a positive integer.');
-    var pos, romanBuf = [];
-    // Thousands
-    while (number >= 1000) {
-      number -= 1000;
-      romanBuf.push('M');
-    }
-    // Hundreds
-    pos = (number / 100) | 0;
-    number %= 100;
-    romanBuf.push(ROMAN_NUMBER_MAP[pos]);
-    // Tens
-    pos = (number / 10) | 0;
-    number %= 10;
-    romanBuf.push(ROMAN_NUMBER_MAP[10 + pos]);
-    // Ones
-    romanBuf.push(ROMAN_NUMBER_MAP[20 + number]);
-
-    var romanStr = romanBuf.join('');
-    return (lowerCase ? romanStr.toLowerCase() : romanStr);
-  };
-
-  Util.inherit = function Util_inherit(sub, base, prototype) {
-    sub.prototype = Object.create(base.prototype);
-    sub.prototype.constructor = sub;
-    for (var prop in prototype) {
-      sub.prototype[prop] = prototype[prop];
-    }
-  };
-
   return Util;
 })();
+
+const ROMAN_NUMBER_MAP = [
+  '', 'C', 'CC', 'CCC', 'CD', 'D', 'DC', 'DCC', 'DCCC', 'CM',
+  '', 'X', 'XX', 'XXX', 'XL', 'L', 'LX', 'LXX', 'LXXX', 'XC',
+  '', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX'
+];
+
+/**
+ * Converts positive integers to (upper case) Roman numerals.
+ * @param {integer} number - The number that should be converted.
+ * @param {boolean} lowerCase - Indicates if the result should be converted
+ *   to lower case letters. The default value is `false`.
+ * @return {string} The resulting Roman number.
+ */
+function toRomanNumerals(number, lowerCase = false) {
+  assert(Number.isInteger(number) && number > 0,
+         'The number should be a positive integer.');
+  let pos, romanBuf = [];
+  // Thousands
+  while (number >= 1000) {
+    number -= 1000;
+    romanBuf.push('M');
+  }
+  // Hundreds
+  pos = (number / 100) | 0;
+  number %= 100;
+  romanBuf.push(ROMAN_NUMBER_MAP[pos]);
+  // Tens
+  pos = (number / 10) | 0;
+  number %= 10;
+  romanBuf.push(ROMAN_NUMBER_MAP[10 + pos]);
+  // Ones
+  romanBuf.push(ROMAN_NUMBER_MAP[20 + number]);
+
+  const romanStr = romanBuf.join('');
+  return (lowerCase ? romanStr.toLowerCase() : romanStr);
+}
 
 var PDFStringTranslateTable = [
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -987,13 +981,6 @@ function createPromiseCapability() {
   return capability;
 }
 
-var createBlob = function createBlob(data, contentType) {
-  if (typeof Blob !== 'undefined') {
-    return new Blob([data], { type: contentType, });
-  }
-  throw new Error('The "Blob" constructor is not supported.');
-};
-
 var createObjectURL = (function createObjectURLClosure() {
   // Blob/createObjectURL is not available, falling back to data schema.
   var digits =
@@ -1001,7 +988,7 @@ var createObjectURL = (function createObjectURLClosure() {
 
   return function createObjectURL(data, contentType, forceDataSchema = false) {
     if (!forceDataSchema && URL.createObjectURL) {
-      var blob = createBlob(data, contentType);
+      const blob = new Blob([data], { type: contentType, });
       return URL.createObjectURL(blob);
     }
 
@@ -1037,21 +1024,21 @@ export {
   MissingDataException,
   MissingPDFException,
   NativeImageDecoding,
-  NotImplementedException,
   PasswordException,
   PasswordResponses,
+  PermissionFlag,
   StreamType,
   TextRenderingMode,
   UnexpectedResponseException,
   UnknownErrorException,
   Util,
+  toRomanNumerals,
   XRefParseException,
   FormatError,
   arrayByteLength,
   arraysToBytes,
   assert,
   bytesToString,
-  createBlob,
   createPromiseCapability,
   createObjectURL,
   deprecated,
@@ -1075,6 +1062,7 @@ export {
   readUint32,
   removeNullCharacters,
   ReadableStream,
+  URL,
   setVerbosityLevel,
   shadow,
   string32,

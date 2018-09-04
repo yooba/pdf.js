@@ -68,6 +68,11 @@ const defaultOptions = {
     value: false,
     kind: OptionKind.VIEWER,
   },
+  eventBusDispatchToDOM: {
+    /** @type {boolean} */
+    value: false,
+    kind: OptionKind.VIEWER,
+  },
   externalLinkRel: {
     /** @type {string} */
     value: 'noopener noreferrer nofollow',
@@ -112,6 +117,16 @@ const defaultOptions = {
     kind: OptionKind.VIEWER,
   },
   sidebarViewOnLoad: {
+    /** @type {number} */
+    value: 0,
+    kind: OptionKind.VIEWER,
+  },
+  scrollModeOnLoad: {
+    /** @type {number} */
+    value: 0,
+    kind: OptionKind.VIEWER,
+  },
+  spreadModeOnLoad: {
     /** @type {number} */
     value: 0,
     kind: OptionKind.VIEWER,

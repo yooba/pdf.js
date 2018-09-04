@@ -13,8 +13,6 @@
  * limitations under the License.
  */
 
-import { cloneObj } from './ui_utils';
-
 let defaultPreferences = null;
 function getDefaultPreferences() {
   if (!defaultPreferences) {
@@ -60,11 +58,21 @@ class BasePreferences {
         configurable: false,
       });
 
-      this.prefs = cloneObj(defaults);
+      this.prefs = Object.assign(Object.create(null), defaults);
       return this._readFromStorage(defaults);
-    }).then((prefObj) => {
-      if (prefObj) {
-        this.prefs = prefObj;
+    }).then((prefs) => {
+      if (!prefs) {
+        return;
+      }
+      for (let name in prefs) {
+        const defaultValue = this.defaults[name], prefValue = prefs[name];
+        // Ignore preferences not present in, or whose types don't match,
+        // the default values.
+        if (defaultValue === undefined ||
+            typeof prefValue !== typeof defaultValue) {
+          continue;
+        }
+        this.prefs[name] = prefValue;
       }
     });
   }
@@ -96,23 +104,8 @@ class BasePreferences {
    */
   reset() {
     return this._initializedPromise.then(() => {
-      this.prefs = cloneObj(this.defaults);
+      this.prefs = Object.assign(Object.create(null), this.defaults);
       return this._writeToStorage(this.defaults);
-    });
-  }
-
-  /**
-   * Replace the current preference values with the ones from storage.
-   * @return {Promise} A promise that is resolved when the preference values
-   *                   have been updated.
-   */
-  reload() {
-    return this._initializedPromise.then(() => {
-      return this._readFromStorage(this.defaults);
-    }).then((prefObj) => {
-      if (prefObj) {
-        this.prefs = prefObj;
-      }
     });
   }
 
@@ -170,6 +163,17 @@ class BasePreferences {
         }
       }
       return defaultValue;
+    });
+  }
+
+  /**
+   * Get the values of all preferences.
+   * @return {Promise} A promise that is resolved with an {Object} containing
+   *                   the values of all preferences.
+   */
+  getAll() {
+    return this._initializedPromise.then(() => {
+      return Object.assign(Object.create(null), this.defaults, this.prefs);
     });
   }
 }

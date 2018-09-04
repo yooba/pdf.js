@@ -21,9 +21,10 @@ import {
   TextLayerMode
 } from './ui_utils';
 import {
-  build, createBlob, getDocument, getFilenameFromUrl, GlobalWorkerOptions,
+  build, createObjectURL, getDocument, getFilenameFromUrl, GlobalWorkerOptions,
   InvalidPDFException, LinkTarget, loadScript, MissingPDFException, OPS,
-  PDFWorker, shadow, UnexpectedResponseException, UNSUPPORTED_FEATURES, version
+  PDFWorker, shadow, UnexpectedResponseException, UNSUPPORTED_FEATURES, URL,
+  version
 } from 'pdfjs-lib';
 import { CursorTool, PDFCursorTools } from './pdf_cursor_tools';
 import { PDFRenderingQueue, RenderingStates } from './pdf_rendering_queue';
@@ -48,7 +49,8 @@ import { Toolbar } from './toolbar';
 import { ViewHistory } from './view_history';
 
 const DEFAULT_SCALE_DELTA = 1.1;
-const DISABLE_AUTO_FETCH_LOADING_BAR_TIMEOUT = 5000;
+const DISABLE_AUTO_FETCH_LOADING_BAR_TIMEOUT = 5000; // ms
+const FORCE_PAGES_LOADED_TIMEOUT = 10000; // ms
 
 const DefaultExternalServices = {
   updateFindControlState(data) {},
@@ -140,6 +142,12 @@ let PDFViewerApplication = {
     }).then(() => {
       return this._initializeL10n();
     }).then(() => {
+      if (this.isViewerEmbedded &&
+          AppOptions.get('externalLinkTarget') === LinkTarget.NONE) {
+        // Prevent external links from "replacing" the viewer,
+        // when it's embedded in e.g. an <iframe> or an <object>.
+        AppOptions.set('externalLinkTarget', LinkTarget.TOP);
+      }
       return this._initializeViewerComponents();
     }).then(() => {
       // Bind the various event handlers *after* the viewer has been
@@ -152,15 +160,8 @@ let PDFViewerApplication = {
       this.l10n.translate(appContainer).then(() => {
         // Dispatch the 'localized' event on the `eventBus` once the viewer
         // has been fully initialized and translated.
-        this.eventBus.dispatch('localized');
+        this.eventBus.dispatch('localized', { source: this, });
       });
-
-      if (this.isViewerEmbedded &&
-          AppOptions.get('externalLinkTarget') === LinkTarget.NONE) {
-        // Prevent external links from "replacing" the viewer,
-        // when it's embedded in e.g. an iframe or an object.
-        AppOptions.set('externalLinkTarget', LinkTarget.TOP);
-      }
 
       this.initialized = true;
     });
@@ -170,93 +171,30 @@ let PDFViewerApplication = {
    * @private
    */
   _readPreferences() {
-    let { preferences, } = this;
+    // A subset of the Preferences that `AppOptions`, for compatibility reasons,
+    // is allowed to override if the `AppOptions` values matches the ones below.
+    const OVERRIDES = {
+      disableFontFace: true,
+      disableRange: true,
+      disableStream: true,
+      textLayerMode: TextLayerMode.DISABLE,
+    };
 
-    return Promise.all([
-      preferences.get('enableWebGL').then(function resolved(value) {
-        AppOptions.set('enableWebGL', value);
-      }),
-      preferences.get('sidebarViewOnLoad').then(function resolved(value) {
-        AppOptions.set('sidebarViewOnLoad', value);
-      }),
-      preferences.get('cursorToolOnLoad').then(function resolved(value) {
-        AppOptions.set('cursorToolOnLoad', value);
-      }),
-      preferences.get('pdfBugEnabled').then(function resolved(value) {
-        AppOptions.set('pdfBugEnabled', value);
-      }),
-      preferences.get('showPreviousViewOnLoad').then(function resolved(value) {
-        AppOptions.set('showPreviousViewOnLoad', value);
-      }),
-      preferences.get('defaultZoomValue').then(function resolved(value) {
-        AppOptions.set('defaultZoomValue', value);
-      }),
-      preferences.get('textLayerMode').then(function resolved(value) {
-        if (AppOptions.get('textLayerMode') === TextLayerMode.DISABLE) {
-          return;
+    return this.preferences.getAll().then(function(prefs) {
+      for (let name in prefs) {
+        if ((name in OVERRIDES) && AppOptions.get(name) === OVERRIDES[name]) {
+          continue;
         }
-        AppOptions.set('textLayerMode', value);
-      }),
-      preferences.get('disableRange').then(function resolved(value) {
-        if (AppOptions.get('disableRange') === true) {
-          return;
-        }
-        AppOptions.set('disableRange', value);
-      }),
-      preferences.get('disableStream').then(function resolved(value) {
-        if (AppOptions.get('disableStream') === true) {
-          return;
-        }
-        AppOptions.set('disableStream', value);
-      }),
-      preferences.get('disableAutoFetch').then(function resolved(value) {
-        AppOptions.set('disableAutoFetch', value);
-      }),
-      preferences.get('disableFontFace').then(function resolved(value) {
-        if (AppOptions.get('disableFontFace') === true) {
-          return;
-        }
-        AppOptions.set('disableFontFace', value);
-      }),
-      preferences.get('useOnlyCssZoom').then(function resolved(value) {
-        AppOptions.set('useOnlyCssZoom', value);
-      }),
-      preferences.get('externalLinkTarget').then(function resolved(value) {
-        if (AppOptions.get('externalLinkTarget') !== LinkTarget.NONE) {
-          return;
-        }
-        AppOptions.set('externalLinkTarget', value);
-      }),
-      preferences.get('renderer').then(function resolved(value) {
-        AppOptions.set('renderer', value);
-      }),
-      preferences.get('renderInteractiveForms').then(function resolved(value) {
-        AppOptions.set('renderInteractiveForms', value);
-      }),
-      preferences.get('disablePageMode').then(function resolved(value) {
-        AppOptions.set('disablePageMode', value);
-      }),
-      preferences.get('disablePageLabels').then(function resolved(value) {
-        AppOptions.set('disablePageLabels', value);
-      }),
-      preferences.get('enablePrintAutoRotate').then(function resolved(value) {
-        AppOptions.set('enablePrintAutoRotate', value);
-      }),
-      preferences.get('scrollModeOnLoad').then(function resolved(value) {
-        AppOptions.set('scrollModeOnLoad', value);
-      }),
-      preferences.get('spreadModeOnLoad').then(function resolved(value) {
-        AppOptions.set('spreadModeOnLoad', value);
-      }),
-    ]).catch(function(reason) { });
+        AppOptions.set(name, prefs[name]);
+      }
+    }, function(reason) { });
   },
 
   /**
    * @private
    */
   _parseHashParameters() {
-    let { appConfig, } = this;
-    let waitOn = [];
+    const waitOn = [];
 
     if (typeof PDFJSDev === 'undefined' || !PDFJSDev.test('PRODUCTION') ||
         AppOptions.get('pdfBugEnabled')) {
@@ -309,7 +247,7 @@ let PDFViewerApplication = {
           case 'visible':
           case 'shadow':
           case 'hover':
-            let viewer = appConfig.viewerContainer;
+            let viewer = this.appConfig.viewerContainer;
             viewer.classList.add('textLayer-' + hashParams['textlayer']);
             break;
         }
@@ -350,7 +288,8 @@ let PDFViewerApplication = {
     return new Promise((resolve, reject) => {
       this.overlayManager = new OverlayManager();
 
-      let eventBus = appConfig.eventBus || getGlobalEventBus();
+      const dispatchToDOM = AppOptions.get('eventBusDispatchToDOM');
+      let eventBus = appConfig.eventBus || getGlobalEventBus(dispatchToDOM);
       this.eventBus = eventBus;
 
       let pdfRenderingQueue = new PDFRenderingQueue();
@@ -408,6 +347,7 @@ let PDFViewerApplication = {
 
       this.findController = new PDFFindController({
         pdfViewer: this.pdfViewer,
+        eventBus,
       });
       this.findController.onUpdateResultsCount = (matchCount) => {
         if (this.supportsIntegratedFind) {
@@ -696,8 +636,6 @@ let PDFViewerApplication = {
     if (this.pdfLoadingTask) {
       // We need to destroy already opened document.
       return this.close().then(() => {
-        // Reload the preferences if a document was previously opened.
-        this.preferences.reload();
         // ... and repeat the open() call.
         return this.open(file, args);
       });
@@ -811,7 +749,7 @@ let PDFViewerApplication = {
     }
 
     this.pdfDocument.getData().then(function(data) {
-      let blob = createBlob(data, 'application/pdf');
+      const blob = new Blob([data], { type: 'application/pdf', });
       downloadManager.download(blob, url, filename);
     }).catch(downloadByUrl); // Error occurred, try downloading with the URL.
   },
@@ -960,6 +898,9 @@ let PDFViewerApplication = {
       this.loadingBar.hide();
 
       firstPagePromise.then(() => {
+        this.eventBus.dispatch('documentloaded', { source: this, });
+        // TODO: Remove the following event, i.e. 'documentload',
+        //       once the mozilla-central tests have been updated.
         this.eventBus.dispatch('documentload', { source: this, });
       });
     });
@@ -972,8 +913,7 @@ let PDFViewerApplication = {
     this.toolbar.setPagesCount(pdfDocument.numPages, false);
     this.secondaryToolbar.setPagesCount(pdfDocument.numPages);
 
-    let id = this.documentFingerprint = pdfDocument.fingerprint;
-    let store = this.store = new ViewHistory(id);
+    const store = this.store = new ViewHistory(pdfDocument.fingerprint);
 
     let baseDocumentUrl;
     if (typeof PDFJSDev === 'undefined' || PDFJSDev.test('GENERIC')) {
@@ -1002,7 +942,7 @@ let PDFViewerApplication = {
         // The browsing history is only enabled when the viewer is standalone,
         // i.e. not when it is embedded in a web page.
         let resetHistory = !AppOptions.get('showPreviousViewOnLoad');
-        this.pdfHistory.initialize(id, resetHistory);
+        this.pdfHistory.initialize(pdfDocument.fingerprint, resetHistory);
 
         if (this.pdfHistory.initialBookmark) {
           this.initialBookmark = this.pdfHistory.initialBookmark;
@@ -1016,8 +956,7 @@ let PDFViewerApplication = {
         hash: null,
       };
       let storePromise = store.getMultiple({
-        exists: false,
-        page: '1',
+        page: null,
         zoom: DEFAULT_SCALE_VALUE,
         scrollLeft: '0',
         scrollTop: '0',
@@ -1030,25 +969,22 @@ let PDFViewerApplication = {
       Promise.all([storePromise, pageModePromise]).then(
           ([values = {}, pageMode]) => {
         // Initialize the default values, from user preferences.
-        let hash = AppOptions.get('defaultZoomValue') ?
-          ('zoom=' + AppOptions.get('defaultZoomValue')) : null;
+        const zoom = AppOptions.get('defaultZoomValue');
+        let hash = zoom ? `zoom=${zoom}` : null;
+
         let rotation = null;
         let sidebarView = AppOptions.get('sidebarViewOnLoad');
         let scrollMode = AppOptions.get('scrollModeOnLoad');
         let spreadMode = AppOptions.get('spreadModeOnLoad');
 
-        if (values.exists && AppOptions.get('showPreviousViewOnLoad')) {
-          hash = 'page=' + values.page +
-            '&zoom=' + (AppOptions.get('defaultZoomValue') || values.zoom) +
+        if (values.page && AppOptions.get('showPreviousViewOnLoad')) {
+          hash = 'page=' + values.page + '&zoom=' + (zoom || values.zoom) +
             ',' + values.scrollLeft + ',' + values.scrollTop;
+
           rotation = parseInt(values.rotation, 10);
           sidebarView = sidebarView || (values.sidebarView | 0);
-          if (values.scrollMode !== null) {
-            scrollMode = values.scrollMode;
-          }
-          if (values.spreadMode !== null) {
-            spreadMode = values.spreadMode;
-          }
+          scrollMode = scrollMode || (values.scrollMode | 0);
+          spreadMode = spreadMode || (values.spreadMode | 0);
         }
         if (pageMode && !AppOptions.get('disablePageMode')) {
           // Always let the user preference/history take precedence.
@@ -1068,16 +1004,27 @@ let PDFViewerApplication = {
         this.setInitialView(hash, {
           rotation, sidebarView, scrollMode, spreadMode,
         });
+        this.eventBus.dispatch('documentinit', { source: this, });
 
         // Make all navigation keys work on document load,
         // unless the viewer is embedded in a web page.
         if (!this.isViewerEmbedded) {
           pdfViewer.focus();
         }
-        return pagesPromise;
+
+        return Promise.race([
+          pagesPromise,
+          new Promise((resolve) => {
+            setTimeout(resolve, FORCE_PAGES_LOADED_TIMEOUT);
+          }),
+        ]);
       }).then(() => {
         // For documents with different page sizes, once all pages are resolved,
         // ensure that the correct location becomes visible on load.
+        // To reduce the risk, in very large and/or slow loading documents,
+        // that the location changes *after* the user has started interacting
+        // with the viewer, wait for either `pagesPromise` or a timeout above.
+
         if (!initialParams.bookmark && !initialParams.hash) {
           return;
         }
@@ -1086,6 +1033,7 @@ let PDFViewerApplication = {
         }
         this.initialBookmark = initialParams.bookmark;
 
+        // eslint-disable-next-line no-self-assign
         pdfViewer.currentScaleValue = pdfViewer.currentScaleValue;
         this.setInitialView(initialParams.hash);
       }).then(function() {
@@ -1235,23 +1183,26 @@ let PDFViewerApplication = {
     });
   },
 
-  setInitialView(storedHash, values = {}) {
-    let { rotation, sidebarView, scrollMode, spreadMode, } = values;
+  setInitialView(storedHash, { rotation, sidebarView,
+                               scrollMode, spreadMode, } = {}) {
     let setRotation = (angle) => {
       if (isValidRotation(angle)) {
         this.pdfViewer.pagesRotation = angle;
+      }
+    };
+    let setViewerModes = (scroll, spread) => {
+      if (Number.isInteger(scroll)) {
+        this.pdfViewer.scrollMode = scroll;
+      }
+      if (Number.isInteger(spread)) {
+        this.pdfViewer.spreadMode = spread;
       }
     };
 
     // Putting these before isInitialViewSet = true prevents these values from
     // being stored in the document history (and overriding any future changes
     // made to the corresponding global preferences), just this once.
-    if (Number.isInteger(scrollMode)) {
-      this.pdfViewer.setScrollMode(scrollMode);
-    }
-    if (Number.isInteger(spreadMode)) {
-      this.pdfViewer.setSpreadMode(spreadMode);
-    }
+    setViewerModes(scrollMode, spreadMode);
 
     this.isInitialViewSet = true;
     this.pdfSidebar.setInitialView(sidebarView);
@@ -1425,14 +1376,15 @@ let PDFViewerApplication = {
     };
     _boundEvents.windowHashChange = () => {
       eventBus.dispatch('hashchange', {
+        source: window,
         hash: document.location.hash.substring(1),
       });
     };
     _boundEvents.windowBeforePrint = () => {
-      eventBus.dispatch('beforeprint');
+      eventBus.dispatch('beforeprint', { source: window, });
     };
     _boundEvents.windowAfterPrint = () => {
-      eventBus.dispatch('afterprint');
+      eventBus.dispatch('afterprint', { source: window, });
     };
 
     window.addEventListener('wheel', webViewerWheel);
@@ -1573,6 +1525,7 @@ function loadAndEnablePDFBug(enabledTabs) {
     PDFBug.enable(enabledTabs);
     PDFBug.init({
       OPS,
+      createObjectURL,
     }, appConfig.mainContainer);
   });
 }
@@ -1622,6 +1575,7 @@ function webViewerInitialized() {
         return;
       }
       PDFViewerApplication.eventBus.dispatch('fileinputchange', {
+        source: this,
         fileInput: evt.target,
       });
     });
@@ -1640,6 +1594,7 @@ function webViewerInitialized() {
         return;
       }
       PDFViewerApplication.eventBus.dispatch('fileinputchange', {
+        source: this,
         fileInput: evt.dataTransfer,
       });
     });
@@ -1861,7 +1816,6 @@ function webViewerUpdateViewarea(evt) {
 
   if (store && PDFViewerApplication.isInitialViewSet) {
     store.setMultiple({
-      'exists': true,
       'page': location.pageNumber,
       'zoom': location.scale,
       'scrollLeft': location.left,
@@ -2020,10 +1974,10 @@ function webViewerRotateCcw() {
   PDFViewerApplication.rotatePages(-90);
 }
 function webViewerSwitchScrollMode(evt) {
-  PDFViewerApplication.pdfViewer.setScrollMode(evt.mode);
+  PDFViewerApplication.pdfViewer.scrollMode = evt.mode;
 }
 function webViewerSwitchSpreadMode(evt) {
-  PDFViewerApplication.pdfViewer.setSpreadMode(evt.mode);
+  PDFViewerApplication.pdfViewer.spreadMode = evt.mode;
 }
 function webViewerDocumentProperties() {
   PDFViewerApplication.pdfDocumentProperties.open();

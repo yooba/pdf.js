@@ -16,8 +16,8 @@
 import {
   AbortException, assert, CMapCompressionType, createPromiseCapability,
   FONT_IDENTITY_MATRIX, FormatError, getLookupTableFactory, IDENTITY_MATRIX,
-  info, isNum, isString, NativeImageDecoding, OPS, TextRenderingMode,
-  UNSUPPORTED_FEATURES, Util, warn
+  info, isNum, isString, NativeImageDecoding, OPS, stringToPDFString,
+  TextRenderingMode, UNSUPPORTED_FEATURES, Util, warn
 } from '../shared/util';
 import { CMapFactory, IdentityCMap } from './cmap';
 import { DecodeStream, Stream } from './stream';
@@ -131,20 +131,17 @@ var PartialEvaluator = (function PartialEvaluatorClosure() {
     this.options = options || DefaultPartialEvaluatorOptions;
     this.pdfFunctionFactory = pdfFunctionFactory;
 
-    this.fetchBuiltInCMap = (name) => {
-      var cachedCMap = this.builtInCMapCache[name];
-      if (cachedCMap) {
-        return Promise.resolve(cachedCMap);
+    this.fetchBuiltInCMap = async (name) => {
+      if (this.builtInCMapCache.has(name)) {
+        return this.builtInCMapCache.get(name);
       }
-      return this.handler.sendWithPromise('FetchBuiltInCMap', {
-        name,
-      }).then((data) => {
-        if (data.compressionType !== CMapCompressionType.NONE) {
-          // Given the size of uncompressed CMaps, only cache compressed ones.
-          this.builtInCMapCache[name] = data;
-        }
-        return data;
-      });
+      const data = await this.handler.sendWithPromise('FetchBuiltInCMap',
+                                                      { name, });
+      if (data.compressionType !== CMapCompressionType.NONE) {
+        // Given the size of uncompressed CMaps, only cache compressed ones.
+        this.builtInCMapCache.set(name, data);
+      }
+      return data;
     };
   }
 
@@ -1513,6 +1510,17 @@ var PartialEvaluator = (function PartialEvaluatorClosure() {
         textContentItem.str.length = 0;
       }
 
+      function isIdenticalSetFont(name, size) {
+        return (textState.font &&
+                name === textState.fontName && size === textState.fontSize);
+      }
+
+      function handleBeginText() {
+        flushTextContentItem();
+        textState.textMatrix = IDENTITY_MATRIX.slice();
+        textState.textLineMatrix = IDENTITY_MATRIX.slice();
+      }
+
       function enqueueChunk() {
         let length = textContent.items.length;
         if (length > 0) {
@@ -1538,6 +1546,7 @@ var PartialEvaluator = (function PartialEvaluatorClosure() {
         task.ensureNotTerminated();
         timeSlotManager.reset();
         var stop, operation = {}, args = [];
+        let pendingBeginText = false;
         while (!(stop = timeSlotManager.check())) {
           // The arguments parsed by read() are not used beyond this loop, so
           // we can reuse the same array on every iteration, thus avoiding
@@ -1548,16 +1557,30 @@ var PartialEvaluator = (function PartialEvaluatorClosure() {
             break;
           }
           textState = stateManager.state;
-          var fn = operation.fn;
+          var fn = operation.fn | 0;
           args = operation.args;
           var advance, diff;
 
-          switch (fn | 0) {
+          if (pendingBeginText) {
+            if (fn === OPS.setFont) {
+              const fontNameArg = args[0].name, fontSizeArg = args[1];
+              // For multiple identical Tf (setFont) commands, first check if
+              // the following command is Tm (setTextMatrix) before continuing.
+              if (isIdenticalSetFont(fontNameArg, fontSizeArg)) {
+                continue;
+              }
+            }
+            if (fn !== OPS.setTextMatrix) {
+              handleBeginText();
+            }
+            pendingBeginText = false;
+          }
+
+          switch (fn) {
             case OPS.setFont:
               // Optimization to ignore multiple identical Tf commands.
               var fontNameArg = args[0].name, fontSizeArg = args[1];
-              if (textState.font && fontNameArg === textState.fontName &&
-                  fontSizeArg === textState.fontSize) {
+              if (isIdenticalSetFont(fontNameArg, fontSizeArg)) {
                 break;
               }
 
@@ -1645,9 +1668,15 @@ var PartialEvaluator = (function PartialEvaluatorClosure() {
               textState.wordSpacing = args[0];
               break;
             case OPS.beginText:
-              flushTextContentItem();
-              textState.textMatrix = IDENTITY_MATRIX.slice();
-              textState.textLineMatrix = IDENTITY_MATRIX.slice();
+              // Optimization to attempt to combine separate BT/ET sequences,
+              // by checking the next operator(s) before flushing text content
+              // and resetting the text/textLine matrices (see above).
+              if (combineTextItems) {
+                pendingBeginText = true;
+                break;
+              }
+
+              handleBeginText();
               break;
             case OPS.showSpacedText:
               var items = args[0];
@@ -1872,8 +1901,8 @@ var PartialEvaluator = (function PartialEvaluatorClosure() {
         var cidSystemInfo = dict.get('CIDSystemInfo');
         if (isDict(cidSystemInfo)) {
           properties.cidSystemInfo = {
-            registry: cidSystemInfo.get('Registry'),
-            ordering: cidSystemInfo.get('Ordering'),
+            registry: stringToPDFString(cidSystemInfo.get('Registry')),
+            ordering: stringToPDFString(cidSystemInfo.get('Ordering')),
             supplement: cidSystemInfo.get('Supplement'),
           };
         }
@@ -2932,6 +2961,8 @@ var EvaluatorPreprocessor = (function EvaluatorPreprocessorClosure() {
     t['null'] = null;
   });
 
+  const MAX_INVALID_PATH_OPS = 20;
+
   function EvaluatorPreprocessor(stream, xref, stateManager) {
     this.opMap = getOPMap();
     // TODO(mduan): pass array of knownCommands rather than this.opMap
@@ -2939,6 +2970,7 @@ var EvaluatorPreprocessor = (function EvaluatorPreprocessorClosure() {
     this.parser = new Parser(new Lexer(stream, this.opMap), false, xref);
     this.stateManager = stateManager;
     this.nonProcessedArgs = [];
+    this._numInvalidPathOPS = 0;
   }
 
   EvaluatorPreprocessor.prototype = {
@@ -2976,7 +3008,7 @@ var EvaluatorPreprocessor = (function EvaluatorPreprocessorClosure() {
           // Check that the command is valid
           var opSpec = this.opMap[cmd];
           if (!opSpec) {
-            warn('Unknown command "' + cmd + '"');
+            warn(`Unknown command "${cmd}".`);
             continue;
           }
 
@@ -3002,18 +3034,28 @@ var EvaluatorPreprocessor = (function EvaluatorPreprocessorClosure() {
             }
 
             if (argsLength < numArgs) {
+              const partialMsg = `command ${cmd}: expected ${numArgs} args, ` +
+                                 `but received ${argsLength} args.`;
+
+              // Incomplete path operators, in particular, can result in fairly
+              // chaotic rendering artifacts. Hence the following heuristics is
+              // used to error, rather than just warn, once a number of invalid
+              // path operators have been encountered (fixes bug1443140.pdf).
+              if ((fn >= OPS.moveTo && fn <= OPS.endPath) && // Path operator
+                  ++this._numInvalidPathOPS > MAX_INVALID_PATH_OPS) {
+                throw new FormatError(`Invalid ${partialMsg}`);
+              }
               // If we receive too few arguments, it's not possible to execute
               // the command, hence we skip the command.
-              warn('Skipping command ' + fn + ': expected ' + numArgs +
-                   ' args, but received ' + argsLength + ' args.');
+              warn(`Skipping ${partialMsg}`);
               if (args !== null) {
                 args.length = 0;
               }
               continue;
             }
           } else if (argsLength > numArgs) {
-            info('Command ' + fn + ': expected [0,' + numArgs +
-                 '] args, but received ' + argsLength + ' args.');
+            info(`Command ${cmd}: expected [0, ${numArgs}] args, ` +
+                 `but received ${argsLength} args.`);
           }
 
           // TODO figure out how to type-check vararg functions
