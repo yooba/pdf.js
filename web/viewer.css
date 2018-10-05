@@ -1919,8 +1919,6 @@ html[dir='rtl'] #documentPropertiesOverlay .row > * {
 
 #presentationMode,
 #openFile,
-#print,
-#download,
 #viewBookmark,
 #secondaryToolbarToggle {
   visibility: hidden;

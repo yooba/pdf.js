@@ -1506,6 +1506,12 @@ function webViewerInitialized() {
     let params = parseQueryString(queryString);
     file = 'file' in params ? params.file : AppOptions.get('defaultUrl');
     validateFileURL(file);
+    let allowPrinting = 'allowprinting' in params ?
+      params.allowprinting === 'true' : false;
+    if (allowPrinting) {
+        appConfig.toolbar.download.removeAttribute('hidden');
+        appConfig.toolbar.print.removeAttribute('hidden');
+    }
   } else if (PDFJSDev.test('FIREFOX || MOZCENTRAL')) {
     file = window.location.href.split('#')[0];
   } else if (PDFJSDev.test('CHROME')) {
