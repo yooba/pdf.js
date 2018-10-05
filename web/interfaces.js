@@ -68,11 +68,6 @@ class IPDFLinkService {
   executeNamedAction(action) {}
 
   /**
-   * @param {Object} params
-   */
-  onFileAttachmentAnnotation({ id, filename, content, }) {}
-
-  /**
    * @param {number} pageNum - page number.
    * @param {Object} pageRef - reference to the page.
    */
@@ -163,12 +158,12 @@ class IL10n {
   /**
    * @returns {Promise<string>} - Resolves to the current locale.
    */
-  getLanguage() {}
+  async getLanguage() {}
 
   /**
    * @returns {Promise<string>} - Resolves to 'rtl' or 'ltr'.
    */
-  getDirection() {}
+  async getDirection() {}
 
   /**
    * Translates text identified by the key and adds/formats data using the args
@@ -179,12 +174,12 @@ class IL10n {
    * @param {string} fallback
    * @returns {Promise<string>}
    */
-  get(key, args, fallback) { }
+  async get(key, args, fallback) { }
 
   /**
    * Translates HTML element.
    * @param {HTMLElement} element
    * @returns {Promise<void>}
    */
-  translate(element) { }
+  async translate(element) { }
 }

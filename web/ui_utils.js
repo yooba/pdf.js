@@ -56,21 +56,19 @@ function formatL10nValue(text, args) {
  * @implements {IL10n}
  */
 let NullL10n = {
-  getLanguage() {
-    return Promise.resolve('en-us');
+  async getLanguage() {
+    return 'en-us';
   },
 
-  getDirection() {
-    return Promise.resolve('ltr');
+  async getDirection() {
+    return 'ltr';
   },
 
-  get(property, args, fallback) {
-    return Promise.resolve(formatL10nValue(fallback, args));
+  async get(property, args, fallback) {
+    return formatL10nValue(fallback, args);
   },
 
-  translate(element) {
-    return Promise.resolve();
-  },
+  async translate(element) { },
 };
 
 /**
@@ -539,7 +537,7 @@ function isDataSchema(url) {
   while (i < ii && url[i].trim() === '') {
     i++;
   }
-  return url.substr(i, 5).toLowerCase() === 'data:';
+  return url.substring(i, i + 5).toLowerCase() === 'data:';
 }
 
 /**
@@ -550,6 +548,9 @@ function isDataSchema(url) {
  * @returns {string} Guessed PDF filename.
  */
 function getPDFFileNameFromURL(url, defaultFilename = 'document.pdf') {
+  if (typeof url !== 'string') {
+    return defaultFilename;
+  }
   if (isDataSchema(url)) {
     console.warn('getPDFFileNameFromURL: ' +
                  'ignoring "data:" URL for performance reasons.');
@@ -710,12 +711,13 @@ class EventBus {
     let eventListeners = this._listeners[eventName];
     if (!eventListeners || eventListeners.length === 0) {
       if (this._dispatchToDOM) {
-        this._dispatchDOMEvent(eventName);
+        const args = Array.prototype.slice.call(arguments, 1);
+        this._dispatchDOMEvent(eventName, args);
       }
       return;
     }
     // Passing all arguments after the eventName to the listeners.
-    let args = Array.prototype.slice.call(arguments, 1);
+    const args = Array.prototype.slice.call(arguments, 1);
     // Making copy of the listeners array in case if it will be modified
     // during dispatch.
     eventListeners.slice(0).forEach(function (listener) {

@@ -49,6 +49,8 @@ const SpreadMode = {
  * @property {IPDFLinkService} linkService - The navigation/linking service.
  * @property {DownloadManager} downloadManager - (optional) The download
  *   manager component.
+ * @property {PDFFindController} findController - (optional) The find
+ *   controller component.
  * @property {PDFRenderingQueue} renderingQueue - (optional) The rendering
  *   queue object.
  * @property {boolean} removePageBorders - (optional) Removes the border shadow
@@ -142,6 +144,7 @@ class BaseViewer {
     this.eventBus = options.eventBus || getGlobalEventBus();
     this.linkService = options.linkService || new SimpleLinkService();
     this.downloadManager = options.downloadManager || null;
+    this.findController = options.findController || null;
     this.removePageBorders = options.removePageBorders || false;
     this.textLayerMode = Number.isInteger(options.textLayerMode) ?
       options.textLayerMode : TextLayerMode.ENABLE;
@@ -360,6 +363,10 @@ class BaseViewer {
     if (this.pdfDocument) {
       this._cancelRendering();
       this._resetView();
+
+      if (this.findController) {
+        this.findController.setDocument(null);
+      }
     }
 
     this.pdfDocument = pdfDocument;
@@ -468,6 +475,9 @@ class BaseViewer {
 
       this.eventBus.dispatch('pagesinit', { source: this, });
 
+      if (this.findController) {
+        this.findController.setDocument(pdfDocument); // Enable searching.
+      }
       if (this.defaultRenderingQueue) {
         this.update();
       }
@@ -913,14 +923,6 @@ class BaseViewer {
     return false;
   }
 
-  getPageTextContent(pageIndex) {
-    return this.pdfDocument.getPage(pageIndex + 1).then(function(page) {
-      return page.getTextContent({
-        normalizeWhitespace: true,
-      });
-    });
-  }
-
   /**
    * @param {HTMLDivElement} textLayerDiv
    * @param {number} pageIndex
@@ -961,10 +963,6 @@ class BaseViewer {
       downloadManager: this.downloadManager,
       l10n,
     });
-  }
-
-  setFindController(findController) {
-    this.findController = findController;
   }
 
   /**
