@@ -72,7 +72,6 @@
 !issue9458.pdf
 !issue9915_reduced.pdf
 !issue9940.pdf
-!issue9984.pdf
 !bad-PageLabels.pdf
 !decodeACSuccessive.pdf
 !filled-background.pdf
@@ -115,6 +114,7 @@
 !issue5686.pdf
 !issue3928.pdf
 !clippath.pdf
+!issue8795_reduced.pdf
 !close-path-bug.pdf
 !issue6019.pdf
 !issue6621.pdf
@@ -272,6 +272,7 @@
 !text_clip_cff_cid.pdf
 !issue4801.pdf
 !issue5334.pdf
+!annotation-caret-ink.pdf
 !bug1186827.pdf
 !issue215.pdf
 !issue5044.pdf
@@ -282,6 +283,7 @@
 !issue5475.pdf
 !annotation-border-styles.pdf
 !IdentityToUnicodeMap_charCodeOf.pdf
+!PDFJS-9279-reduced.pdf
 !issue5481.pdf
 !issue5567.pdf
 !issue5701.pdf
@@ -304,6 +306,7 @@
 !issue7014.pdf
 !issue8187.pdf
 !annotation-link-text-popup.pdf
+!issue9278.pdf
 !annotation-text-without-popup.pdf
 !annotation-underline.pdf
 !annotation-strikeout.pdf
