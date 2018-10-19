@@ -2075,3 +2075,9 @@ a:focus > .thumbnail > .thumbnailSelectionRing,
 .thumbnail.selected > .thumbnailSelectionRing {
   box-shadow: none;
 }
+
+@media all and (max-width: 700px) {
+  #outerContainer .hiddenMediumView {
+    display: inherit;
+  }
+}
