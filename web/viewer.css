@@ -2076,6 +2076,19 @@ a:focus > .thumbnail > .thumbnailSelectionRing,
   box-shadow: none;
 }
 
+.outlineItem > a,
+.attachmentsItem > button {
+  color: black;
+}
+.outlineItemToggler:hover,
+.outlineItemToggler:hover + a,
+.outlineItemToggler:hover ~ .outlineItems,
+.outlineItem > a:hover,
+.attachmentsItem > button:hover {
+  background-color: hsla(0,0%,0%,.05);
+  color: black;
+}
+
 @media all and (max-width: 700px) {
   #outerContainer .hiddenMediumView {
     display: inherit;
