@@ -14,15 +14,14 @@
  */
 
 import {
-  CSS_UNITS, DEFAULT_SCALE, DEFAULT_SCALE_VALUE, isPortraitOrientation,
-  isValidRotation, MAX_AUTO_SCALE, moveToEndOfArray, NullL10n,
-  PresentationModeState, RendererType, SCROLLBAR_PADDING, TextLayerMode,
-  UNKNOWN_SCALE, VERTICAL_PADDING, watchScroll
+  CSS_UNITS, DEFAULT_SCALE, DEFAULT_SCALE_VALUE, getGlobalEventBus,
+  isPortraitOrientation, isValidRotation, MAX_AUTO_SCALE, moveToEndOfArray,
+  NullL10n, PresentationModeState, RendererType, SCROLLBAR_PADDING,
+  TextLayerMode, UNKNOWN_SCALE, VERTICAL_PADDING, watchScroll
 } from './ui_utils';
 import { PDFRenderingQueue, RenderingStates } from './pdf_rendering_queue';
 import { AnnotationLayerBuilder } from './annotation_layer_builder';
 import { createPromiseCapability } from 'pdfjs-lib';
-import { getGlobalEventBus } from './dom_events';
 import { PDFPageView } from './pdf_page_view';
 import { SimpleLinkService } from './pdf_link_service';
 import { TextLayerBuilder } from './text_layer_builder';
@@ -232,15 +231,13 @@ class BaseViewer {
         `${this._name}._setCurrentPageNumber: "${val}" is out of bounds.`);
       return;
     }
+    this._currentPageNumber = val;
 
-    let arg = {
+    this.eventBus.dispatch('pagechanging', {
       source: this,
       pageNumber: val,
       pageLabel: this._pageLabels && this._pageLabels[val - 1],
-    };
-    this._currentPageNumber = val;
-    this.eventBus.dispatch('pagechanging', arg);
-    this.eventBus.dispatch('pagechange', arg);
+    });
 
     if (resetCurrentPageView) {
       this._resetCurrentPageView();
@@ -541,22 +538,16 @@ class BaseViewer {
     throw new Error('Not implemented: _scrollIntoView');
   }
 
-  _setScaleDispatchEvent(newScale, newValue, preset = false) {
-    let arg = {
-      source: this,
-      scale: newScale,
-      presetValue: preset ? newValue : undefined,
-    };
-    this.eventBus.dispatch('scalechanging', arg);
-    this.eventBus.dispatch('scalechange', arg);
-  }
-
   _setScaleUpdatePages(newScale, newValue, noScroll = false, preset = false) {
     this._currentScaleValue = newValue.toString();
 
     if (isSameScale(this._currentScale, newScale)) {
       if (preset) {
-        this._setScaleDispatchEvent(newScale, newValue, true);
+        this.eventBus.dispatch('scalechanging', {
+          source: this,
+          scale: newScale,
+          presetValue: newValue,
+        });
       }
       return;
     }
@@ -581,7 +572,11 @@ class BaseViewer {
       });
     }
 
-    this._setScaleDispatchEvent(newScale, newValue, preset);
+    this.eventBus.dispatch('scalechanging', {
+      source: this,
+      scale: newScale,
+      presetValue: preset ? newValue : undefined,
+    });
 
     if (this.defaultRenderingQueue) {
       this.update();
@@ -855,6 +850,30 @@ class BaseViewer {
       false : (this.container.scrollHeight > this.container.clientHeight));
   }
 
+  /**
+   * Helper method for `this._getVisiblePages`. Should only ever be used when
+   * the viewer can only display a single page at a time, for example in:
+   *  - `PDFSinglePageViewer`.
+   *  - `PDFViewer` with Presentation Mode active.
+   */
+  _getCurrentVisiblePage() {
+    if (!this.pagesCount) {
+      return { views: [], };
+    }
+    const pageView = this._pages[this._currentPageNumber - 1];
+    // NOTE: Compute the `x` and `y` properties of the current view,
+    // since `this._updateLocation` depends of them being available.
+    const element = pageView.div;
+
+    const view = {
+      id: pageView.id,
+      x: element.offsetLeft + element.clientLeft,
+      y: element.offsetTop + element.clientTop,
+      view: pageView,
+    };
+    return { first: view, last: view, views: [view], };
+  }
+
   _getVisiblePages() {
     throw new Error('Not implemented: _getVisiblePages');
   }
@@ -1038,16 +1057,10 @@ class BaseViewer {
   _updateScrollMode(pageNumber = null) {
     const scrollMode = this._scrollMode, viewer = this.viewer;
 
-    if (scrollMode === ScrollMode.HORIZONTAL) {
-      viewer.classList.add('scrollHorizontal');
-    } else {
-      viewer.classList.remove('scrollHorizontal');
-    }
-    if (scrollMode === ScrollMode.WRAPPED) {
-      viewer.classList.add('scrollWrapped');
-    } else {
-      viewer.classList.remove('scrollWrapped');
-    }
+    viewer.classList.toggle('scrollHorizontal',
+                            scrollMode === ScrollMode.HORIZONTAL);
+    viewer.classList.toggle('scrollWrapped',
+                            scrollMode === ScrollMode.WRAPPED);
 
     if (!this.pdfDocument || !pageNumber) {
       return;
