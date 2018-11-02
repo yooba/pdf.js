@@ -13,8 +13,7 @@
  * limitations under the License.
  */
 
-import { getGlobalEventBus } from './dom_events';
-import { parseQueryString } from './ui_utils';
+import { getGlobalEventBus, parseQueryString } from './ui_utils';
 
 /**
  * @typedef {Object} PDFLinkServiceOptions
@@ -408,10 +407,20 @@ function isValidExplicitDestination(dest) {
   return true;
 }
 
+/**
+ * @implements {IPDFLinkService}
+ */
 class SimpleLinkService {
   constructor() {
     this.externalLinkTarget = null;
     this.externalLinkRel = null;
+  }
+
+  /**
+   * @returns {number}
+   */
+  get pagesCount() {
+    return 0;
   }
 
   /**
