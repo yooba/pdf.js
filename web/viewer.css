@@ -2050,6 +2050,9 @@ html[dir='rtl'] #sidebarContent {
   right: 0;
   box-shadow: inset 1px 0 0 hsla(0,0%,0%,.05);
 }
+.toolbarButton.pdfSidebarNotification::after {
+  background-color: #0092fc;
+}
 .toolbarButton[disabled],
 .secondaryToolbarButton[disabled],
 .overlayButton[disabled] {
